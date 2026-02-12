@@ -1,0 +1,7 @@
+{
+  "name": "Campus-Crave",
+  "description": "A hyper-local food and retail delivery system for GLA University, featuring multi-role dashboards for students, vendors, and delivery partners.",
+  "requestFramePermissions": [
+    "geolocation"
+  ]
+}
