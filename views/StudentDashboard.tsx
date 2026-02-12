@@ -1,12 +1,11 @@
 
 import React, { useState } from 'react';
 import { useApp } from '../store';
-import { VENDORS } from '../constants';
 import { Product, OrderStatus } from '../types';
 import { getAIFoodRecommendation } from '../services/geminiService';
 
 const StudentDashboard: React.FC = () => {
-  const { addToCart, cart, placeOrder, orders, removeFromCart, products } = useApp();
+  const { addToCart, cart, placeOrder, orders, removeFromCart, products, vendors } = useApp();
   const [selectedVendorId, setSelectedVendorId] = useState<string | null>(null);
   const [aiPrompt, setAiPrompt] = useState('');
   const [recommendations, setRecommendations] = useState<{name: string, reason: string}[] | null>(null);
@@ -24,7 +23,7 @@ const StudentDashboard: React.FC = () => {
 
   const filteredProducts = products.filter(p => p.isAvailable && (!selectedVendorId || p.vendorId === selectedVendorId));
 
-  const activeOrders = orders.filter(o => o.status !== OrderStatus.DELIVERED);
+  const activeOrders = orders.filter(o => o.status !== OrderStatus.DELIVERED && o.status !== OrderStatus.CANCELLED);
 
   return (
     <div className="max-w-6xl mx-auto p-4 md:p-6 pb-24">
@@ -73,7 +72,7 @@ const StudentDashboard: React.FC = () => {
                   <span className="bg-orange-100 text-orange-700 text-[10px] font-bold px-2 py-1 rounded-full">{order.status}</span>
                 </div>
                 <div className="mb-4">
-                  <p className="text-sm font-bold text-slate-800">{order.items.length} items from {VENDORS.find(v => v.id === order.vendorId)?.name}</p>
+                  <p className="text-sm font-bold text-slate-800">{order.items.length} items from {vendors.find(v => v.id === order.vendorId)?.name}</p>
                   <p className="text-xs text-slate-500 mt-1">Delivery to: {order.deliveryAddress}</p>
                 </div>
                 <div className="flex items-center justify-between border-t border-slate-50 pt-3">
@@ -95,20 +94,21 @@ const StudentDashboard: React.FC = () => {
       {/* Vendors List */}
       <section className="mb-8">
         <h2 className="text-xl font-bold mb-4">Campus Shops</h2>
-        <div className="flex gap-4 overflow-x-auto pb-4">
+        <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
           <button 
             onClick={() => setSelectedVendorId(null)}
             className={`px-6 py-2 rounded-full font-medium whitespace-nowrap transition-all ${!selectedVendorId ? 'bg-orange-600 text-white shadow-lg shadow-orange-200' : 'bg-white text-slate-600 border border-slate-200'}`}
           >
             All Items
           </button>
-          {VENDORS.map(v => (
+          {vendors.map(v => (
             <button 
               key={v.id}
               onClick={() => setSelectedVendorId(v.id)}
-              className={`px-6 py-2 rounded-full font-medium whitespace-nowrap transition-all ${selectedVendorId === v.id ? 'bg-orange-600 text-white shadow-lg shadow-orange-200' : 'bg-white text-slate-600 border border-slate-200'}`}
+              className={`px-6 py-2 rounded-full font-medium whitespace-nowrap transition-all flex items-center gap-2 ${selectedVendorId === v.id ? 'bg-orange-600 text-white shadow-lg shadow-orange-200' : 'bg-white text-slate-600 border border-slate-200 opacity-80'}`}
             >
-              {v.name}
+              <span>{v.name}</span>
+              {!v.isOpen && <span className="bg-red-500 text-[8px] text-white px-1.5 py-0.5 rounded font-black uppercase">Closed</span>}
             </button>
           ))}
         </div>
@@ -116,35 +116,49 @@ const StudentDashboard: React.FC = () => {
 
       {/* Products Grid */}
       <section className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-        {filteredProducts.map(p => (
-          <div key={p.id} className="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-100 hover:shadow-md transition-all group">
-            <div className="h-48 overflow-hidden relative">
-              <img src={p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
-              <div className="absolute top-2 left-2 bg-white/90 backdrop-blur px-2 py-1 rounded-lg text-[10px] font-bold text-slate-800 shadow-sm uppercase tracking-wider">
-                {p.category}
+        {filteredProducts.map(p => {
+          const vendor = vendors.find(v => v.id === p.vendorId);
+          return (
+            <div key={p.id} className="bg-white rounded-2xl overflow-hidden shadow-sm border border-slate-100 hover:shadow-md transition-all group">
+              <div className="h-48 overflow-hidden relative">
+                <img src={p.image} alt={p.name} className="w-full h-full object-cover group-hover:scale-110 transition-transform duration-500" />
+                <div className="absolute top-2 left-2 bg-white/90 backdrop-blur px-2 py-1 rounded-lg text-[10px] font-bold text-slate-800 shadow-sm uppercase tracking-wider">
+                  {p.category}
+                </div>
+                {!vendor?.isOpen && (
+                   <div className="absolute inset-0 bg-slate-900/60 flex items-center justify-center">
+                      <span className="bg-white text-slate-900 px-4 py-2 rounded-xl font-black text-sm">VENDOR CLOSED</span>
+                   </div>
+                )}
+              </div>
+              <div className="p-5">
+                <div className="flex justify-between items-start mb-2">
+                  <h3 className="font-bold text-slate-800 group-hover:text-orange-600 transition-colors">{p.name}</h3>
+                  <span className="font-black text-slate-900">₹{p.price}</span>
+                </div>
+                <p className="text-xs text-slate-400 mb-1">{vendor?.name}</p>
+                <p className="text-sm text-slate-500 mb-4 line-clamp-2">{p.description}</p>
+                <button 
+                  disabled={!vendor?.isOpen}
+                  onClick={() => addToCart(p)}
+                  className={`w-full py-2 rounded-xl font-semibold border transition-all flex items-center justify-center gap-2 ${
+                    vendor?.isOpen 
+                    ? 'bg-slate-50 hover:bg-orange-50 text-slate-700 hover:text-orange-700 border-slate-100 hover:border-orange-100' 
+                    : 'bg-slate-100 text-slate-400 border-transparent cursor-not-allowed'
+                  }`}
+                >
+                  <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
+                    <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
+                  </svg>
+                  Add to Cart
+                </button>
               </div>
             </div>
-            <div className="p-5">
-              <div className="flex justify-between items-start mb-2">
-                <h3 className="font-bold text-slate-800 group-hover:text-orange-600 transition-colors">{p.name}</h3>
-                <span className="font-black text-slate-900">₹{p.price}</span>
-              </div>
-              <p className="text-sm text-slate-500 mb-4 line-clamp-2">{p.description}</p>
-              <button 
-                onClick={() => addToCart(p)}
-                className="w-full py-2 bg-slate-50 hover:bg-orange-50 text-slate-700 hover:text-orange-700 rounded-xl font-semibold border border-slate-100 hover:border-orange-100 transition-all flex items-center justify-center gap-2"
-              >
-                <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M10 3a1 1 0 011 1v5h5a1 1 0 110 2h-5v5a1 1 0 11-2 0v-5H4a1 1 0 110-2h5V4a1 1 0 011-1z" clipRule="evenodd" />
-                </svg>
-                Add to Cart
-              </button>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </section>
 
-      {/* Cart Modal / Slide-over */}
+      {/* Cart Modal */}
       {cart.length > 0 && !showCart && (
         <div className="fixed bottom-6 left-1/2 -translate-x-1/2 w-11/12 max-w-lg bg-slate-900 text-white p-4 rounded-2xl shadow-2xl flex items-center justify-between z-40 animate-bounce-short">
           <div>

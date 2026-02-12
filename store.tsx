@@ -1,7 +1,7 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
-import { Order, CartItem, User, UserRole, OrderStatus, Product } from './types';
-import { PRODUCTS as INITIAL_PRODUCTS } from './constants';
+import { Order, CartItem, User, UserRole, OrderStatus, Product, Vendor } from './types';
+import { PRODUCTS as INITIAL_PRODUCTS, VENDORS as INITIAL_VENDORS } from './constants';
 
 interface AppContextType {
   currentUser: User | null;
@@ -12,9 +12,11 @@ interface AppContextType {
   clearCart: () => void;
   orders: Order[];
   products: Product[];
-  // Fix: Changed Omit to also exclude 'image' as it's generated internally by addProduct
+  vendors: Vendor[];
   addProduct: (product: Omit<Product, 'id' | 'isAvailable' | 'image'>) => void;
+  updateProduct: (productId: string, updates: Partial<Product>) => void;
   toggleProductAvailability: (productId: string) => void;
+  updateVendor: (vendorId: string, updates: Partial<Vendor>) => void;
   placeOrder: (address: string) => void;
   updateOrderStatus: (orderId: string, status: OrderStatus, deliveryId?: string) => void;
 }
@@ -26,6 +28,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [cart, setCart] = useState<CartItem[]>([]);
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
+  const [vendors, setVendors] = useState<Vendor[]>(INITIAL_VENDORS);
 
   // Load initial state from local storage
   useEffect(() => {
@@ -34,6 +37,9 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     
     const savedProducts = localStorage.getItem('cc_products');
     if (savedProducts) setProducts(JSON.parse(savedProducts));
+
+    const savedVendors = localStorage.getItem('cc_vendors');
+    if (savedVendors) setVendors(JSON.parse(savedVendors));
   }, []);
 
   useEffect(() => {
@@ -43,6 +49,10 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem('cc_products', JSON.stringify(products));
   }, [products]);
+
+  useEffect(() => {
+    localStorage.setItem('cc_vendors', JSON.stringify(vendors));
+  }, [vendors]);
 
   const addToCart = (product: Product) => {
     setCart(prev => {
@@ -60,7 +70,6 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
   const clearCart = () => setCart([]);
 
-  // Fix: Update parameter type to omit 'image' which is generated below
   const addProduct = (newProdData: Omit<Product, 'id' | 'isAvailable' | 'image'>) => {
     const newProduct: Product = {
       ...newProdData,
@@ -71,10 +80,18 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     setProducts(prev => [...prev, newProduct]);
   };
 
+  const updateProduct = (productId: string, updates: Partial<Product>) => {
+    setProducts(prev => prev.map(p => p.id === productId ? { ...p, ...updates } : p));
+  };
+
   const toggleProductAvailability = (productId: string) => {
     setProducts(prev => prev.map(p => 
       p.id === productId ? { ...p, isAvailable: !p.isAvailable } : p
     ));
+  };
+
+  const updateVendor = (vendorId: string, updates: Partial<Vendor>) => {
+    setVendors(prev => prev.map(v => v.id === vendorId ? { ...v, ...updates } : v));
   };
 
   const placeOrder = (address: string) => {
@@ -106,8 +123,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     <AppContext.Provider value={{
       currentUser, setCurrentUser,
       cart, addToCart, removeFromCart, clearCart,
-      orders, products, addProduct, toggleProductAvailability,
-      placeOrder, updateOrderStatus
+      orders, products, vendors, addProduct, updateProduct, toggleProductAvailability,
+      updateVendor, placeOrder, updateOrderStatus
     }}>
       {children}
     </AppContext.Provider>
