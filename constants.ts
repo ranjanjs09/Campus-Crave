@@ -1,5 +1,5 @@
 
-import { Vendor, Product } from './types';
+import { Vendor, Product, User, UserRole } from './types';
 
 export const VENDORS: Vendor[] = [
   {
@@ -90,5 +90,41 @@ export const PRODUCTS: Product[] = [
     category: 'Retail',
     image: 'https://picsum.photos/seed/p5/200/200',
     isAvailable: true
+  }
+];
+
+export const MOCK_USERS: (User & { password: string })[] = [
+  {
+    id: 'u_student',
+    name: 'Aaryan Sharma',
+    email: 'student@gla.ac.in',
+    password: 'student123',
+    role: UserRole.STUDENT,
+    avatar: 'https://i.pravatar.cc/150?u=student'
+  },
+  {
+    id: 'u_vendor',
+    name: 'Rajesh Kumar',
+    email: 'vendor@gla.ac.in',
+    password: 'vendor123',
+    role: UserRole.VENDOR,
+    avatar: 'https://i.pravatar.cc/150?u=vendor',
+    vendorId: 'v1'
+  },
+  {
+    id: 'u_delivery',
+    name: 'Suresh Pal',
+    email: 'delivery@gla.ac.in',
+    password: 'delivery123',
+    role: UserRole.DELIVERY,
+    avatar: 'https://i.pravatar.cc/150?u=delivery'
+  },
+  {
+    id: 'u_admin',
+    name: 'System Admin',
+    email: 'admin@gla.ac.in',
+    password: 'admin123',
+    role: UserRole.ADMIN,
+    avatar: 'https://i.pravatar.cc/150?u=admin'
   }
 ];

@@ -1,7 +1,9 @@
 
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { Order, CartItem, User, UserRole, OrderStatus, Product, Vendor } from './types';
-import { PRODUCTS as INITIAL_PRODUCTS, VENDORS as INITIAL_VENDORS } from './constants';
+import { PRODUCTS as INITIAL_PRODUCTS, VENDORS as INITIAL_VENDORS, MOCK_USERS } from './constants';
+
+type UserWithPassword = User & { password: string };
 
 interface AppContextType {
   currentUser: User | null;
@@ -13,12 +15,16 @@ interface AppContextType {
   orders: Order[];
   products: Product[];
   vendors: Vendor[];
+  users: UserWithPassword[];
   addProduct: (product: Omit<Product, 'id' | 'isAvailable' | 'image'>) => void;
   updateProduct: (productId: string, updates: Partial<Product>) => void;
   toggleProductAvailability: (productId: string) => void;
   updateVendor: (vendorId: string, updates: Partial<Vendor>) => void;
   placeOrder: (address: string) => void;
   updateOrderStatus: (orderId: string, status: OrderStatus, deliveryId?: string) => void;
+  login: (email: string, password: string) => Promise<boolean>;
+  register: (userData: Omit<UserWithPassword, 'id' | 'avatar'>) => Promise<boolean>;
+  logout: () => void;
 }
 
 const AppContext = createContext<AppContextType | undefined>(undefined);
@@ -29,6 +35,7 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   const [orders, setOrders] = useState<Order[]>([]);
   const [products, setProducts] = useState<Product[]>(INITIAL_PRODUCTS);
   const [vendors, setVendors] = useState<Vendor[]>(INITIAL_VENDORS);
+  const [users, setUsers] = useState<UserWithPassword[]>(MOCK_USERS);
 
   // Load initial state from local storage
   useEffect(() => {
@@ -40,6 +47,12 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
 
     const savedVendors = localStorage.getItem('cc_vendors');
     if (savedVendors) setVendors(JSON.parse(savedVendors));
+
+    const savedUsers = localStorage.getItem('cc_users_list');
+    if (savedUsers) setUsers(JSON.parse(savedUsers));
+
+    const savedUser = localStorage.getItem('cc_user');
+    if (savedUser) setCurrentUser(JSON.parse(savedUser));
   }, []);
 
   useEffect(() => {
@@ -53,6 +66,50 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
   useEffect(() => {
     localStorage.setItem('cc_vendors', JSON.stringify(vendors));
   }, [vendors]);
+
+  useEffect(() => {
+    localStorage.setItem('cc_users_list', JSON.stringify(users));
+  }, [users]);
+
+  useEffect(() => {
+    if (currentUser) {
+      localStorage.setItem('cc_user', JSON.stringify(currentUser));
+    } else {
+      localStorage.removeItem('cc_user');
+    }
+  }, [currentUser]);
+
+  const login = async (email: string, password: string): Promise<boolean> => {
+    const user = users.find(u => u.email.toLowerCase() === email.toLowerCase() && u.password === password);
+    if (user) {
+      const { password: _, ...userWithoutPassword } = user;
+      setCurrentUser(userWithoutPassword);
+      return true;
+    }
+    return false;
+  };
+
+  const register = async (userData: Omit<UserWithPassword, 'id' | 'avatar'>): Promise<boolean> => {
+    const exists = users.find(u => u.email.toLowerCase() === userData.email.toLowerCase());
+    if (exists) return false;
+
+    const newUser: UserWithPassword = {
+      ...userData,
+      id: 'u_' + Math.random().toString(36).substr(2, 9),
+      avatar: `https://i.pravatar.cc/150?u=${userData.email}`,
+      vendorId: userData.role === UserRole.VENDOR ? 'v1' : undefined // Default to v1 for demo
+    };
+
+    setUsers(prev => [...prev, newUser]);
+    const { password: _, ...userWithoutPassword } = newUser;
+    setCurrentUser(userWithoutPassword);
+    return true;
+  };
+
+  const logout = () => {
+    setCurrentUser(null);
+    setCart([]);
+  };
 
   const addToCart = (product: Product) => {
     setCart(prev => {
@@ -123,8 +180,8 @@ export const AppProvider: React.FC<{ children: React.ReactNode }> = ({ children 
     <AppContext.Provider value={{
       currentUser, setCurrentUser,
       cart, addToCart, removeFromCart, clearCart,
-      orders, products, vendors, addProduct, updateProduct, toggleProductAvailability,
-      updateVendor, placeOrder, updateOrderStatus
+      orders, products, vendors, users, addProduct, updateProduct, toggleProductAvailability,
+      updateVendor, placeOrder, updateOrderStatus, login, register, logout
     }}>
       {children}
     </AppContext.Provider>

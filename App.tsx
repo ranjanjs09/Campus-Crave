@@ -3,7 +3,7 @@ import React from 'react';
 import { AppProvider, useApp } from './store';
 import { UserRole } from './types';
 import Navbar from './components/Navbar';
-import RoleSelection from './views/RoleSelection';
+import LoginPage from './views/LoginPage';
 import StudentDashboard from './views/StudentDashboard';
 import VendorDashboard from './views/VendorDashboard';
 import DeliveryDashboard from './views/DeliveryDashboard';
@@ -13,7 +13,7 @@ const AppContent: React.FC = () => {
   const { currentUser } = useApp();
 
   if (!currentUser) {
-    return <RoleSelection />;
+    return <LoginPage />;
   }
 
   const renderDashboard = () => {
@@ -27,7 +27,7 @@ const AppContent: React.FC = () => {
       case UserRole.ADMIN:
         return <AdminDashboard />;
       default:
-        return <RoleSelection />;
+        return <LoginPage />;
     }
   };
 
